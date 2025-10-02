@@ -4,17 +4,26 @@ import requests
 import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # <--- import CORS
+import base64,hashlib
+from cryptography.fernet import Fernet
+
+my_secret_key = os.getenv("SECRET_KEY")
 
 app = Flask(__name__)
 CORS(app)  # <--- enable CORS for all routes
 
-# --- Load keys from environment variable ---
-json_str = os.getenv("KEYS_DATA")
+encoded_str = 'gAAAAABo3rWTHA42jZzJXaO3aCss3jKyfuVRkOAExR0nymO7vrFGBMCXVFejXPq_h8t2r1VmrBRRO-yQ7IV2nEMHti7eMuOqrh99SgFM7QzVAMnhG3fUYn9Al2Srh0YawYoS5lcSlp_dsHhOTigUSwyGXaXoK3L6ZxGHgGcqVKbUngNgjLZn8R79wulEvZcTQHQNlJ5SYA5OcSrm8nqW1B-yKz010LywTGDYIM9yLWpt4ZbspQIgfBaHH5SljRvPJRHa9pj0Efplc4QSYQh7STcWiRkBO7jdLsoG0iOiBKn__Fw4zRAKuPNUkhi--ndyUiWzihJinF0q'
 keys = dict()
-if json_str:
-    keys = json.loads(json_str)
-else:
-    print("keys data not available")
+# --- Step 1: Derive 32-byte key and encode to base64 ---
+key_hash = hashlib.sha256(my_secret_key.encode()).digest()
+fernet_key = base64.urlsafe_b64encode(key_hash)  # Fernet requires base64 32-byte key
+
+# --- Step 2: Initialize Fernet ---
+fernet = Fernet(fernet_key)
+# --- Step 4: Decode back to object ---
+decoded_bytes = fernet.decrypt(encoded_str.encode())
+decoded_json_str = decoded_bytes.decode()
+keys = json.loads(decoded_json_str)
 
 GITHUB_USERNAME = keys["GITHUB_USERNAME"]
 REPO_NAME = keys["REPO_NAME"]
@@ -81,16 +90,12 @@ def upload_file_to_github(file_path, repo_file_path):
 
     resp = requests.put(api_url, headers=HEADERS, json=data)
     return resp
+
 # ... your existing imports and code ...
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "success", "msg": "Server working fine"}), 200
-
-# existing /upload, /list, /delete routes ...
-
-if __name__ == "__main__":
-    app.run(debug=True)
 
 
 @app.route("/upload", methods=["POST"])
