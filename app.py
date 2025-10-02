@@ -7,7 +7,7 @@ from flask_cors import CORS  # <--- import CORS
 import base64,hashlib
 from cryptography.fernet import Fernet
 
-my_secret_key = os.getenv("SECRET_KEY")
+my_secret_key = 'theSecretKey321!@#'
 
 app = Flask(__name__)
 CORS(app)  # <--- enable CORS for all routes
