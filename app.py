@@ -7,35 +7,35 @@ from flask_cors import CORS
 import hashlib
 from cryptography.fernet import Fernet
 
-# --- Flask app setup ---
+# --- Load secret key from environment ---
+my_secret_key = os.getenv("SECRET_KEY")
+if not my_secret_key:
+    raise ValueError("SECRET_KEY environment variable not found!")
+
 app = Flask(__name__)
 CORS(app)  # enable CORS for all routes
 
-# --- Load secret key and decrypt keys data ---
-my_secret_key = os.getenv("SECRET_KEY")
-encoded_str = os.getenv("KEYS_DATA")  # Encrypted string in environment variable
+# --- Encrypted keys string ---
+encoded_str = 'gAAAAABo3rWTHA42jZzJXaO3aCss3jKyfuVRkOAExR0nymO7vrFGBMCXVFejXPq_h8t2r1VmrBRRO-yQ7IV2nEMHti7eMuOqrh99SgFM7QzVAMnhG3fUYn9Al2Srh0YawYoS5lcSlp_dsHhOTigUSwyGXaXoK3L6ZxGHgGcqVKbUngNgjLZn8R79wulEvZcTQHQNlJ5SYA5OcSrm8nqW1B-yKz010LywTGDYIM9yLWpt4ZbspQIgfBaHH5SljRvPJRHa9pj0Efplc4QSYQh7STcWiRkBO7jdLsoG0iOiBKn__Fw4zRAKuPNUkhi--ndyUiWzihJinF0q'
 
-keys = dict()
-if encoded_str and my_secret_key:
-    # Derive 32-byte key and encode to base64 for Fernet
-    key_hash = hashlib.sha256(my_secret_key.encode()).digest()
-    fernet_key = base64.urlsafe_b64encode(key_hash)
-    fernet = Fernet(fernet_key)
-    decoded_bytes = fernet.decrypt(encoded_str.encode())
-    decoded_json_str = decoded_bytes.decode()
-    keys = json.loads(decoded_json_str)
-else:
-    print("Keys data not available or SECRET_KEY missing")
+# --- Decode the encrypted keys ---
+key_hash = hashlib.sha256(my_secret_key.encode()).digest()
+fernet_key = base64.urlsafe_b64encode(key_hash)  # Fernet requires 32-byte base64 key
+fernet = Fernet(fernet_key)
+
+decoded_bytes = fernet.decrypt(encoded_str.encode())
+decoded_json_str = decoded_bytes.decode()
+keys = json.loads(decoded_json_str)
 
 GITHUB_USERNAME = keys["GITHUB_USERNAME"]
 REPO_NAME = keys["REPO_NAME"]
 BRANCH = keys["BRANCH"]
 PAT_TOKEN = keys["PAT_TOKEN"]
 
+# --- Common Headers for GitHub API ---
 HEADERS = {"Authorization": f"token {PAT_TOKEN}"}
 
 
-# --- GitHub helper functions ---
 def get_repo_files():
     """Get all files in repo root"""
     api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/?ref={BRANCH}"
@@ -94,7 +94,6 @@ def upload_file_to_github(file_path, repo_file_path):
     return resp
 
 
-# --- Routes ---
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "success", "msg": "Server working fine"}), 200
@@ -105,7 +104,10 @@ def upload():
     try:
         # Get repo URL from request
         body = request.get_json(force=True, silent=True)
-        repo_url = body.get("gurl") if body else request.data.decode("utf-8").strip()
+        if not body:
+            repo_url = request.data.decode("utf-8").strip()
+        else:
+            repo_url = body.get("gurl")
 
         if not repo_url:
             return jsonify({"status": "error", "msg": "No GitHub URL provided"}), 400
@@ -121,12 +123,12 @@ def upload():
         owner, repo = parts[-2], parts[-1]
         zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/main.zip"
 
-        # Step 1: Download repo as zip
+        # Step 1: Download repo as zip to /tmp
+        local_file = f"/tmp/{repo}.zip"
         r = requests.get(zip_url)
         if r.status_code != 200:
             return jsonify({"status": "error", "msg": "Repo is private or does not exist"}), 400
 
-        local_file = f"{repo}.zip"
         with open(local_file, "wb") as f:
             f.write(r.content)
 
