@@ -81,6 +81,16 @@ def upload_file_to_github(file_path, repo_file_path):
 
     resp = requests.put(api_url, headers=HEADERS, json=data)
     return resp
+# ... your existing imports and code ...
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "success", "msg": "Server working fine"}), 200
+
+# existing /upload, /list, /delete routes ...
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 
 @app.route("/upload", methods=["POST"])
