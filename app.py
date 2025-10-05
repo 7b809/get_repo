@@ -7,6 +7,9 @@ from flask_cors import CORS
 import hashlib
 from cryptography.fernet import Fernet
 
+# --- Encrypted keys string ---
+encoded_str = 'gAAAAABo3rWTHA42jZzJXaO3aCss3jKyfuVRkOAExR0nymO7vrFGBMCXVFejXPq_h8t2r1VmrBRRO-yQ7IV2nEMHti7eMuOqrh99SgFM7QzVAMnhG3fUYn9Al2Srh0YawYoS5lcSlp_dsHhOTigUSwyGXaXoK3L6ZxGHgGcqVKbUngNgjLZn8R79wulEvZcTQHQNlJ5SYA5OcSrm8nqW1B-yKz010LywTGDYIM9yLWpt4ZbspQIgfBaHH5SljRvPJRHa9pj0Efplc4QSYQh7STcWiRkBO7jdLsoG0iOiBKn__Fw4zRAKuPNUkhi--ndyUiWzihJinF0q'
+
 # --- Load secret key from environment ---
 my_secret_key = os.getenv("SECRET_KEY")
 if not my_secret_key:
@@ -15,8 +18,6 @@ if not my_secret_key:
 app = Flask(__name__)
 CORS(app)  # enable CORS for all routes
 
-# --- Encrypted keys string ---
-encoded_str = 'gAAAAABo3rWTHA42jZzJXaO3aCss3jKyfuVRkOAExR0nymO7vrFGBMCXVFejXPq_h8t2r1VmrBRRO-yQ7IV2nEMHti7eMuOqrh99SgFM7QzVAMnhG3fUYn9Al2Srh0YawYoS5lcSlp_dsHhOTigUSwyGXaXoK3L6ZxGHgGcqVKbUngNgjLZn8R79wulEvZcTQHQNlJ5SYA5OcSrm8nqW1B-yKz010LywTGDYIM9yLWpt4ZbspQIgfBaHH5SljRvPJRHa9pj0Efplc4QSYQh7STcWiRkBO7jdLsoG0iOiBKn__Fw4zRAKuPNUkhi--ndyUiWzihJinF0q'
 
 # --- Decode the encrypted keys ---
 key_hash = hashlib.sha256(my_secret_key.encode()).digest()
