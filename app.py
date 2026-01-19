@@ -16,12 +16,11 @@ if not my_secret_key:
     raise ValueError("SECRET_KEY environment variable not found!")
 
 app = Flask(__name__)
-CORS(app)  # enable CORS for all routes
-
+CORS(app)
 
 # --- Decode the encrypted keys ---
 key_hash = hashlib.sha256(my_secret_key.encode()).digest()
-fernet_key = base64.urlsafe_b64encode(key_hash)  # Fernet requires 32-byte base64 key
+fernet_key = base64.urlsafe_b64encode(key_hash)
 fernet = Fernet(fernet_key)
 
 decoded_bytes = fernet.decrypt(encoded_str.encode())
@@ -38,7 +37,6 @@ HEADERS = {"Authorization": f"token {PAT_TOKEN}"}
 
 
 def get_repo_files():
-    """Get all files in repo root"""
     api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/?ref={BRANCH}"
     resp = requests.get(api_url, headers=HEADERS)
     if resp.status_code == 200:
@@ -47,7 +45,6 @@ def get_repo_files():
 
 
 def get_file_sha(repo_file_path):
-    """Get SHA of a file (needed to update/delete existing file)"""
     api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/{repo_file_path}?ref={BRANCH}"
     resp = requests.get(api_url, headers=HEADERS)
     if resp.status_code == 200:
@@ -56,7 +53,6 @@ def get_file_sha(repo_file_path):
 
 
 def get_unique_filename(base_name):
-    """Generate a unique filename if a conflict exists in the repo"""
     files = get_repo_files()
     existing_names = [f["name"] for f in files if f["type"] == "file"]
 
@@ -73,14 +69,13 @@ def get_unique_filename(base_name):
 
 
 def upload_file_to_github(file_path, repo_file_path):
-    """Upload or update file in GitHub repo"""
     api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{REPO_NAME}/contents/{repo_file_path}"
 
     with open(file_path, "rb") as f:
         content = f.read()
     encoded = base64.b64encode(content).decode("utf-8")
 
-    sha = get_file_sha(repo_file_path)  # include SHA if updating
+    sha = get_file_sha(repo_file_path)
 
     data = {
         "message": f"Add or update {repo_file_path}",
@@ -95,6 +90,27 @@ def upload_file_to_github(file_path, repo_file_path):
     return resp
 
 
+def download_repo_zip(owner, repo):
+    """
+    Download full GitHub repo ZIP (supports main/master)
+    """
+    branches = ["main", "master"]
+
+    for branch in branches:
+        zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip"
+        r = requests.get(zip_url, stream=True, timeout=60)
+
+        if r.status_code == 200:
+            local_file = f"/tmp/{repo}.zip"
+            with open(local_file, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            return local_file
+
+    return None
+
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"status": "success", "msg": "Server working fine"}), 200
@@ -103,7 +119,6 @@ def home():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        # Get repo URL from request
         body = request.get_json(force=True, silent=True)
         if not body:
             repo_url = request.data.decode("utf-8").strip()
@@ -113,34 +128,28 @@ def upload():
         if not repo_url:
             return jsonify({"status": "error", "msg": "No GitHub URL provided"}), 400
 
-        # Extract owner/repo
-        if repo_url.endswith(".git"):
-            repo_url = repo_url[:-4]
-
+        # Normalize repo URL
+        repo_url = repo_url.replace(".git", "").strip("/")
         parts = repo_url.split("/")
-        if len(parts) < 5:
+
+        if len(parts) < 2:
             return jsonify({"status": "error", "msg": "Invalid GitHub repo URL"}), 400
 
         owner, repo = parts[-2], parts[-1]
-        zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/main.zip"
 
-        # Step 1: Download repo as zip to /tmp
-        local_file = f"/tmp/{repo}.zip"
-        r = requests.get(zip_url)
-        if r.status_code != 200:
+        # Step 1: Download repo zip
+        local_file = download_repo_zip(owner, repo)
+        if not local_file:
             return jsonify({"status": "error", "msg": "Repo is private or does not exist"}), 400
 
-        with open(local_file, "wb") as f:
-            f.write(r.content)
-
-        # Step 2: Generate unique target filename
+        # Step 2: Generate unique filename
         base_name = f"uploaded_{repo}.zip"
         target_name = get_unique_filename(base_name)
 
         # Step 3: Upload to GitHub
         resp = upload_file_to_github(local_file, target_name)
 
-        # Step 4: Cleanup local zip
+        # Step 4: Cleanup
         if os.path.exists(local_file):
             os.remove(local_file)
 
@@ -203,3 +212,4 @@ def delete_file_by_index():
 
 if __name__ == "__main__":
     app.run(debug=True)
+    
