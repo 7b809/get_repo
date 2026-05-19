@@ -93,31 +93,15 @@ def download_repo_zip(repo_url, branch, download_folder):
 
         except requests.exceptions.Timeout:
 
-            return {
-                "success": False,
-                "message": "Request timeout while downloading repository",
-                "repo_url": repo_url,
-                "branch": branch,
-            }
+            return {"success": False, "message": ("Repository download timed out")}
 
         except requests.exceptions.ConnectionError:
 
-            return {
-                "success": False,
-                "message": "Internet connection error",
-                "repo_url": repo_url,
-                "branch": branch,
-            }
+            return {"success": False, "message": ("Unable to connect to GitHub")}
 
         except requests.exceptions.RequestException as e:
 
-            return {
-                "success": False,
-                "message": "Request failed",
-                "error": str(e),
-                "repo_url": repo_url,
-                "branch": branch,
-            }
+            return {"success": False, "message": ("Unable to download repository")}
 
         # =====================================================
         # STATUS CODE CHECK
@@ -125,25 +109,11 @@ def download_repo_zip(repo_url, branch, download_folder):
 
         if response.status_code == 404:
 
-            return {
-                "success": False,
-                "message": ("Repository or branch not found"),
-                "repo": repo,
-                "branch": branch,
-                "status_code": response.status_code,
-                "zip_url": zip_url,
-            }
+            return {"success": False, "message": "Repository or branch not found"}
 
         if response.status_code != 200:
 
-            return {
-                "success": False,
-                "message": "Failed to download repository",
-                "status_code": response.status_code,
-                "repo": repo,
-                "branch": branch,
-                "zip_url": zip_url,
-            }
+            return {"success": False, "message": ("Repository download failed")}
 
         # =====================================================
         # FILE NAME
@@ -184,11 +154,7 @@ def download_repo_zip(repo_url, branch, download_folder):
 
         if not os.path.exists(file_path):
 
-            return {
-                "success": False,
-                "message": "ZIP file not saved properly",
-                "file_path": file_path,
-            }
+            return {"success": False, "message": ("Failed to save ZIP file")}
 
         file_size = os.path.getsize(file_path)
 
@@ -198,18 +164,11 @@ def download_repo_zip(repo_url, branch, download_folder):
 
         return {
             "success": True,
-            "message": "Repository ZIP downloaded successfully",
+            "message": "Repository downloaded successfully",
             "data": {
-                "repo_owner": owner,
-                "repo_name": repo,
-                "branch": branch,
-                "zip_url": zip_url,
                 "filename": filename,
-                "file_path": file_path,
-                "file_size_bytes": file_size,
                 "file_size_mb": round(file_size / (1024 * 1024), 2),
-                "downloaded_bytes": downloaded,
-                "status_code": response.status_code,
+                "download_url": (f"/download-file/{filename}"),
             },
         }
 
