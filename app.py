@@ -11,6 +11,7 @@ app = Flask(__name__)
 # CONFIG
 # =====================================================
 
+# DOWNLOAD_FOLDER = "downloads"
 DOWNLOAD_FOLDER = "/tmp/downloads"
 
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)

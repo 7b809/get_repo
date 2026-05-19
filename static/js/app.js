@@ -1,7 +1,18 @@
 async function downloadRepo() {
 
-    const repoUrl = document.getElementById("repo_url").value;
-    const branch = document.getElementById("branch").value;
+    // =====================================================
+    // GET INPUT VALUES
+    // =====================================================
+
+    const repoUrl =
+        document.getElementById("repo_url").value.trim();
+
+    const branch =
+        document.getElementById("branch").value.trim();
+
+    // =====================================================
+    // GET ELEMENTS
+    // =====================================================
 
     const progressContainer =
         document.getElementById("progressContainer");
@@ -9,11 +20,49 @@ async function downloadRepo() {
     const statusBox =
         document.getElementById("statusBox");
 
-    progressContainer.classList.remove("d-none");
+    // =====================================================
+    // RESET UI
+    // =====================================================
 
     statusBox.innerHTML = "";
 
+    progressContainer.classList.remove("d-none");
+
+    // =====================================================
+    // BASIC VALIDATION
+    // =====================================================
+
+    if (!repoUrl) {
+
+        progressContainer.classList.add("d-none");
+
+        statusBox.innerHTML = `
+            <div class="alert alert-danger">
+                Repository URL is required
+            </div>
+        `;
+
+        return;
+    }
+
+    if (!branch) {
+
+        progressContainer.classList.add("d-none");
+
+        statusBox.innerHTML = `
+            <div class="alert alert-danger">
+                Branch name is required
+            </div>
+        `;
+
+        return;
+    }
+
     try {
+
+        // =================================================
+        // SEND REQUEST
+        // =================================================
 
         const response = await fetch("/download", {
 
@@ -24,28 +73,53 @@ async function downloadRepo() {
             },
 
             body: JSON.stringify({
+
                 repo_url: repoUrl,
+
                 branch: branch
             })
 
         });
 
+        // =================================================
+        // PARSE RESPONSE
+        // =================================================
+
         const data = await response.json();
 
+        // =================================================
+        // HIDE PROGRESS
+        // =================================================
+
         progressContainer.classList.add("d-none");
+
+        // =================================================
+        // SUCCESS
+        // =================================================
 
         if (data.success) {
 
             statusBox.innerHTML = `
+
                 <div class="alert alert-success">
 
-                    Repo downloaded successfully.
+                    <h5 class="mb-3">
+                        ${data.message}
+                    </h5>
 
-                    <br><br>
+                    <p class="mb-3">
+
+                        <strong>
+                            File Size:
+                        </strong>
+
+                        ${data.data.file_size_mb} MB
+
+                    </p>
 
                     <a
-                        href="/download-file/${data.filename}"
-                        class="btn btn-success"
+                        href="${data.data.download_url}"
+                        class="btn btn-success btn-lg"
                     >
                         Download ZIP
                     </a>
@@ -53,22 +127,54 @@ async function downloadRepo() {
                 </div>
             `;
 
-        } else {
+        }
+
+        // =================================================
+        // FAILED
+        // =================================================
+
+        else {
 
             statusBox.innerHTML = `
+
                 <div class="alert alert-danger">
-                    ${data.message}
+
+                    <h5 class="mb-2">
+                        Download Failed
+                    </h5>
+
+                    <p class="mb-0">
+                        ${data.message}
+                    </p>
+
                 </div>
             `;
         }
 
-    } catch (error) {
+    }
+
+    // =====================================================
+    // CATCH ERROR
+    // =====================================================
+
+    catch (error) {
+
+        console.error(error);
 
         progressContainer.classList.add("d-none");
 
         statusBox.innerHTML = `
+
             <div class="alert alert-danger">
-                Error occurred
+
+                <h5 class="mb-2">
+                    Unexpected Error
+                </h5>
+
+                <p class="mb-0">
+                    Something went wrong while downloading the repository.
+                </p>
+
             </div>
         `;
     }
