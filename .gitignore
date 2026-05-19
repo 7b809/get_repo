@@ -11,7 +11,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+/tmp/downloads
+downloads
 temp
 tests
 test
