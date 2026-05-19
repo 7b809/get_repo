@@ -1,0 +1,17 @@
+body {
+    background: #f4f7fb;
+}
+
+.card {
+    border-radius: 20px;
+}
+
+.btn-primary {
+    padding: 14px;
+    font-weight: bold;
+}
+
+.progress {
+    height: 30px;
+    border-radius: 20px;
+}
